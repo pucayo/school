@@ -214,8 +214,8 @@
       pairings: []
     };
 
-    // Firebase Init Setup
-    const appId = typeof __app_id !== 'undefined' ? __app_id : '5th-grade-class1-buddy';
+    // Firebase Init Setup - Fixed Single Room ID for Teacher & Students
+    const appId = '5th-grade-class1-buddy-v1';
     const firebaseConfig = typeof __firebase_config !== 'undefined' 
       ? JSON.parse(__firebase_config) 
       : { apiKey: "demo-key", authDomain: "demo.firebaseapp.com", projectId: "demo-project" };
@@ -276,7 +276,7 @@
 
         await signInAnonymously(auth);
 
-        // 6-segment path (artifacts/appId/public/data/classData/state)
+        // Fixed 6-segment path for guaranteed shared sync across all devices
         docRef = doc(db, 'artifacts', appId, 'public', 'data', 'classData', 'state');
 
         // Realtime Listener across all devices
@@ -293,12 +293,12 @@
           }
           renderApp();
         }, (err) => {
-          console.warn("Firestore access, fallback to BroadcastChannel:", err);
+          console.warn("Firestore access fallback:", err);
           setupLocalBroadcast();
         });
 
       } catch (e) {
-        console.warn("Firebase Init failed, fallback to local:", e);
+        console.warn("Firebase Init failed:", e);
         setupLocalBroadcast();
       }
     }
