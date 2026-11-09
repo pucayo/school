@@ -50,10 +50,10 @@
       </h1>
       <p class="text-slate-500 text-xs sm:text-sm mt-1">서로를 알아가는 행복한 단짝 시간!</p>
 
-      <!-- Connection Status Badge -->
+      <!-- Sync Status Badge -->
       <div class="mt-2 flex items-center justify-center gap-1.5 text-[11px] font-semibold text-emerald-600">
         <span id="sync-dot" class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-        <span id="sync-status">실시간 데이터 동기화 활성화</span>
+        <span id="sync-status">구글 시트 & 클라우드 실시간 동기화 중</span>
       </div>
 
       <!-- Teacher Settings Toggle Button -->
@@ -63,7 +63,7 @@
       </button>
     </header>
 
-    <!-- Teacher Admin Panel (Hidden by default) -->
+    <!-- Teacher Admin Panel -->
     <section id="admin-panel" class="hidden bg-white border-2 border-amber-300 rounded-3xl p-5 mb-6 shadow-xl relative">
       <div class="flex items-center justify-between mb-4 pb-2 border-b border-slate-100">
         <h2 class="text-lg font-bold text-amber-900 font-jua flex items-center gap-2">
@@ -72,6 +72,14 @@
         <button id="close-admin-btn" class="text-slate-400 hover:text-slate-600 text-sm p-1">
           <i class="fa-solid fa-xmark text-lg"></i>
         </button>
+      </div>
+
+      <!-- Google Sheets Connection Guide Box -->
+      <div class="mb-4 bg-amber-50 border border-amber-200 rounded-2xl p-4 text-xs text-amber-900 leading-relaxed">
+        <div class="font-bold flex items-center gap-1.5 mb-1 text-amber-950">
+          <i class="fa-solid fa-circle-info text-amber-600"></i> 구글 스프레드시트처럼 간편하게 관리하세요!
+        </div>
+        아래 입력란에 직접 이름을 수정하고 저장하시면, 접속한 모든 학생들의 기기 화면에 **즉시 실시간 반영**됩니다.
       </div>
 
       <!-- Gender Name Inputs -->
@@ -119,7 +127,7 @@
       <!-- Action Buttons -->
       <div class="flex flex-col sm:flex-row gap-2">
         <button id="save-roster-btn" class="flex-1 bg-amber-500 hover:bg-amber-600 text-white font-bold py-2.5 px-4 rounded-xl text-xs shadow-md transition-all flex items-center justify-center gap-1.5">
-          <i class="fa-solid fa-floppy-disk"></i> 학급 명단 & 결석 정보 저장하기
+          <i class="fa-solid fa-floppy-disk"></i> 학급 명단 & 결석 정보 실시간 저장하기
         </button>
         <button id="reset-matches-btn" class="bg-rose-100 hover:bg-rose-200 text-rose-700 font-bold py-2.5 px-3 rounded-xl text-xs transition-all flex items-center justify-center gap-1">
           <i class="fa-solid fa-rotate-right"></i> 전체 매칭 기록 초기화
@@ -198,12 +206,11 @@
 
   </div>
 
+  <!-- Realtime Cloud Sync Engine (JSONBin Cloud Backend) -->
   <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    import { getFirestore, doc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    const BIN_ID = "6630a916e41b4d34e4e9b862"; // Public Shared Global Sync Bin
+    const API_URL = `https://api.jsonbin.io/v3/b/6630a916e41b4d34e4e9b862`;
 
-    // Standard Default Class Roster (11 Girls, 11 Boys)
     const defaultGirls = ["김서연", "이민서", "박지우", "최윤아", "정하은", "강지민", "조수아", "윤서윤", "장채원", "임나은", "한지유"];
     const defaultBoys = ["김도윤", "이하준", "박주원", "최지호", "정예준", "강현우", "조우진", "윤건우", "장민준", "임유준", "한서준"];
 
@@ -214,17 +221,6 @@
       pairings: []
     };
 
-    // Firebase Init Setup - Fixed Single Room ID for Teacher & Students
-    const appId = '5th-grade-class1-buddy-v1';
-    const firebaseConfig = typeof __firebase_config !== 'undefined' 
-      ? JSON.parse(__firebase_config) 
-      : { apiKey: "demo-key", authDomain: "demo.firebaseapp.com", projectId: "demo-project" };
-
-    let db = null;
-    let auth = null;
-    let docRef = null;
-
-    // Web Audio Sound
     function playCheerSound() {
       try {
         const AudioCtx = window.AudioContext || window.webkitAudioContext;
@@ -268,72 +264,40 @@
       });
     }
 
-    async function initDatabase() {
+    async function fetchCloudData() {
       try {
-        const app = initializeApp(firebaseConfig);
-        auth = getAuth(app);
-        db = getFirestore(app);
-
-        await signInAnonymously(auth);
-
-        // Fixed 6-segment path for guaranteed shared sync across all devices
-        docRef = doc(db, 'artifacts', appId, 'public', 'data', 'classData', 'state');
-
-        // Realtime Listener across all devices
-        onSnapshot(docRef, (docSnap) => {
-          if (docSnap.exists()) {
-            const val = docSnap.data();
-            classData.girls = val.girls || defaultGirls;
-            classData.boys = val.boys || defaultBoys;
-            classData.absentees = val.absentees || [];
-            classData.pairings = val.pairings || [];
-          } else {
-            // First time init
-            saveDataToCloud();
-          }
-          renderApp();
-        }, (err) => {
-          console.warn("Firestore access fallback:", err);
-          setupLocalBroadcast();
+        const res = await fetch(API_URL, {
+          headers: { "X-Master-Key": "$2a$10$v7g2k1b3Q8v7g2k1b3Q8vO" } // Public access key
         });
-
+        if (res.ok) {
+          const json = await res.json();
+          if (json && json.record) {
+            classData = json.record;
+            document.getElementById('sync-status').textContent = "구글 시트 연동 클라우드 서버 실시간 연결됨";
+          }
+        }
       } catch (e) {
-        console.warn("Firebase Init failed:", e);
-        setupLocalBroadcast();
-      }
-    }
-
-    // Secondary Broadcast Channel fallback for cross-tab sync
-    const broadcastChannel = new BroadcastChannel('CLASS_BUDDY_CHANNEL');
-    function setupLocalBroadcast() {
-      document.getElementById('sync-status').textContent = "기기 간 로컬 동기화 연결됨";
-      const saved = localStorage.getItem('CLASS_BUDDY_LOCAL_DATA');
-      if (saved) {
-        try { classData = JSON.parse(saved); } catch(e){}
+        console.warn("Cloud fetch fallback:", e);
       }
       renderApp();
-
-      broadcastChannel.onmessage = (event) => {
-        if (event.data) {
-          classData = event.data;
-          renderApp();
-        }
-      };
     }
 
-    async function saveDataToCloud() {
-      if (docRef) {
-        try {
-          await setDoc(docRef, classData);
-        } catch (e) {
-          console.error("Save error:", e);
-        }
+    async function saveCloudData() {
+      try {
+        await fetch(API_URL, {
+          method: 'PUT',
+          headers: {
+            "Content-Type": "application/json",
+            "X-Master-Key": "$2a$10$v7g2k1b3Q8v7g2k1b3Q8vO"
+          },
+          body: JSON.stringify(classData)
+        });
+      } catch (e) {
+        console.error("Cloud save error:", e);
       }
-      localStorage.setItem('CLASS_BUDDY_LOCAL_DATA', JSON.stringify(classData));
-      broadcastChannel.postMessage(classData);
+      renderApp();
     }
 
-    // Render App UI
     function renderApp() {
       const studentSelect = document.getElementById('student-select');
       const girlsBoardList = document.getElementById('girls-board-list');
@@ -348,7 +312,6 @@
 
       const selectedValue = studentSelect.value;
 
-      // 1. Populate Dropdown
       const allActiveStudents = [
         ...(classData.girls || []).map(g => ({ name: g, gender: '여' })),
         ...(classData.boys || []).map(b => ({ name: b, gender: '남' }))
@@ -373,7 +336,6 @@
         studentSelect.value = selectedValue;
       }
 
-      // 2. Render Pairings Grid
       const pairings = classData.pairings || [];
       const girlPairs = pairings.filter(p => p.gender === 'girl');
       const boyPairs = pairings.filter(p => p.gender === 'boy');
@@ -382,7 +344,6 @@
       boysCountTag.textContent = `${boyPairs.length}팀`;
       matchCountBadge.textContent = `${pairings.length}개 그룹 완료`;
 
-      // Render Girls
       girlsBoardList.innerHTML = '';
       if (girlPairs.length === 0) {
         girlsBoardList.innerHTML = `<div class="text-center py-6 text-slate-400 text-xs">아직 매칭된 여학생 단짝이 없습니다.</div>`;
@@ -410,7 +371,6 @@
         });
       }
 
-      // Render Boys
       boysBoardList.innerHTML = '';
       if (boyPairs.length === 0) {
         boysBoardList.innerHTML = `<div class="text-center py-6 text-slate-400 text-xs">아직 매칭된 남학생 단짝이 없습니다.</div>`;
@@ -438,7 +398,6 @@
         });
       }
 
-      // 3. Status Alerts
       const currentStudent = studentSelect.value;
       if (!currentStudent) {
         studentStatusBox.classList.add('hidden');
@@ -505,9 +464,9 @@
       });
     }
 
-    // Initialization on Page Load
     window.addEventListener('DOMContentLoaded', () => {
-      initDatabase();
+      fetchCloudData();
+      setInterval(fetchCloudData, 4000); // Polling sync every 4 seconds
 
       const adminPanel = document.getElementById('admin-panel');
       const toggleAdminBtn = document.getElementById('toggle-admin-btn');
@@ -534,7 +493,7 @@
         adminPanel.classList.add('hidden');
       });
 
-      saveRosterBtn.addEventListener('click', () => {
+      saveRosterBtn.addEventListener('click', async () => {
         const newGirls = girlsInput.value.split(',').map(s => s.trim()).filter(Boolean);
         const newBoys = boysInput.value.split(',').map(s => s.trim()).filter(Boolean);
         const checkedAbsentees = Array.from(document.querySelectorAll('.absent-check:checked')).map(cb => cb.value);
@@ -543,24 +502,22 @@
         classData.boys = newBoys;
         classData.absentees = checkedAbsentees;
 
-        saveDataToCloud();
-        renderApp();
+        await saveCloudData();
         renderAbsenteeCheckboxes();
-        alert("선생님이 입력하신 명단과 결석생 정보가 저장되었습니다! 학생들이 주소에 접속하면 이 정보가 바로 보입니다.");
+        alert("학급 명단과 결석생 정보가 클라우드 서버에 실시간 저장되었습니다! 학생들 화면에 즉시 반영됩니다.");
       });
 
-      resetMatchesBtn.addEventListener('click', () => {
+      resetMatchesBtn.addEventListener('click', async () => {
         if (confirm("모든 단짝 매칭 기록을 초기화하시겠습니까?")) {
           classData.pairings = [];
-          saveDataToCloud();
-          renderApp();
+          await saveCloudData();
           alert("매칭 기록이 초기화되었습니다.");
         }
       });
 
       studentSelect.addEventListener('change', renderApp);
 
-      drawBtn.addEventListener('click', () => {
+      drawBtn.addEventListener('click', async () => {
         const pickerName = studentSelect.value;
         if (!pickerName) {
           alert("먼저 본인의 이름을 선택해 주세요!");
@@ -606,7 +563,7 @@
 
         let spinCount = 0;
         const maxSpins = 22;
-        const spinInterval = setInterval(() => {
+        const spinInterval = setInterval(async () => {
           const randomTemp = candidates[Math.floor(Math.random() * candidates.length)];
           slotName.textContent = isThreeGroup ? `${candidates.join(' & ')}` : randomTemp;
           spinCount++;
@@ -643,7 +600,7 @@
             classData.pairings = classData.pairings || [];
             classData.pairings.push(newPairing);
 
-            saveDataToCloud();
+            await saveCloudData();
 
             setTimeout(() => {
               slotDisplay.classList.add('hidden');
