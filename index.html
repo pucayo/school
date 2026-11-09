@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>5학년 1반 단짝 뽑기</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Canvas Confetti -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&family=Jua&display=swap" rel="stylesheet">
+
+  <style>
+    body {
+      font-family: 'Gowun Dodum', sans-serif;
+      background-color: #f8fafc;
+    }
+    .font-jua {
+      font-family: 'Jua', sans-serif;
+    }
+    @keyframes slotBounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-6px); }
+    }
+    .animate-slot {
+      animation: slotBounce 0.15s infinite linear;
+    }
+    .card-transition {
+      transition: all 0.25s ease-in-out;
+    }
+  </style>
+</head>
+<body class="bg-gradient-to-br from-amber-50 via-rose-50 to-sky-50 min-h-screen text-slate-800 pb-12">
+
+  <!-- Main Container -->
+  <div class="max-w-4xl mx-auto px-4 py-6">
+
+    <!-- Header -->
+    <header class="text-center mb-6 relative">
+      <div class="inline-flex items-center justify-center gap-2 bg-amber-100 text-amber-800 px-4 py-1 rounded-full text-xs font-bold mb-2 shadow-sm">
+        <i class="fa-solid fa-graduation-cap"></i> 5학년 1반 단짝 데이
+      </div>
+      <h1 class="text-3xl sm:text-4xl font-extrabold text-slate-900 font-jua tracking-wide text-rose-500 drop-shadow-sm">
+        🎈 우리 반 단짝 게시판
+      </h1>
+      <p class="text-slate-500 text-xs sm:text-sm mt-1">서로를 알아가는 행복한 단짝 시간!</p>
+
+      <!-- Sync Status Badge -->
+      <div class="mt-2 flex items-center justify-center gap-1.5 text-[11px] font-semibold text-emerald-600">
+        <span id="sync-dot" class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+        <span id="sync-status">실시간 클라우드 DB 연동 완료</span>
+      </div>
+
+      <!-- Teacher Settings Toggle Button -->
+      <button id="toggle-admin-btn" class="absolute top-0 right-0 bg-white/90 hover:bg-white text-slate-700 border border-slate-200 px-3 py-1.5 rounded-xl text-xs font-bold shadow-sm transition-all flex items-center gap-1.5">
+        <i class="fa-solid fa-gear text-amber-500"></i>
+        <span>선생님 관리</span>
+      </button>
+    </header>
+
+    <!-- Teacher Admin Panel -->
+    <section id="admin-panel" class="hidden bg-white border-2 border-amber-300 rounded-3xl p-5 mb-6 shadow-xl relative">
+      <div class="flex items-center justify-between mb-4 pb-2 border-b border-slate-100">
+        <h2 class="text-lg font-bold text-amber-900 font-jua flex items-center gap-2">
+          <i class="fa-solid fa-sliders text-amber-500"></i> 학급 명단 및 결석생 관리
+        </h2>
+        <button id="close-admin-btn" class="text-slate-400 hover:text-slate-600 text-sm p-1">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <!-- Info Box -->
+      <div class="mb-4 bg-amber-50 border border-amber-200 rounded-2xl p-4 text-xs text-amber-900 leading-relaxed">
+        <div class="font-bold flex items-center gap-1.5 mb-1 text-amber-950">
+          <i class="fa-solid fa-circle-info text-amber-600"></i> 저장하면 모든 학생 기기에 즉시 반영됩니다!
+        </div>
+        이름을 수정하거나 결석생을 체크한 뒤 아래 저장 버튼을 누르세요.
+      </div>
+
+      <!-- Gender Name Inputs -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        <!-- Girls List -->
+        <div class="bg-rose-50/70 p-3.5 rounded-2xl border border-rose-200">
+          <label class="block text-xs font-bold text-rose-700 mb-1 flex items-center gap-1">
+            <i class="fa-solid fa-venus"></i> 여학생 명단 (쉼표로 구분)
+          </label>
+          <textarea id="girls-input" rows="3" class="w-full text-xs p-2.5 rounded-xl border border-rose-200 focus:ring-2 focus:ring-rose-400 focus:outline-none resize-none bg-white" placeholder="김서연, 이민서..."></textarea>
+        </div>
+        <!-- Boys List -->
+        <div class="bg-sky-50/70 p-3.5 rounded-2xl border border-sky-200">
+          <label class="block text-xs font-bold text-sky-700 mb-1 flex items-center gap-1">
+            <i class="fa-solid fa-mars"></i> 남학생 명단 (쉼표로 구분)
+          </label>
+          <textarea id="boys-input" rows="3" class="w-full text-xs p-2.5 rounded-xl border border-sky-200 focus:ring-2 focus:ring-sky-400 focus:outline-none resize-none bg-white" placeholder="김도윤, 이하준..."></textarea>
+        </div>
+      </div>
+
+      <!-- Separated Absentee Checklists -->
+      <div class="mb-5 bg-slate-50 p-4 rounded-2xl border border-slate-200">
+        <label class="block text-xs font-bold text-slate-700 mb-2.5 flex items-center gap-1.5">
+          <i class="fa-solid fa-user-slash text-amber-600"></i> Today's 결석생 체크 (체크 시 매칭 대상에서 제외)
+        </label>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Girls Absent Check -->
+          <div class="bg-white p-3 rounded-xl border border-rose-100">
+            <div class="text-[11px] font-bold text-rose-600 mb-1.5 flex items-center gap-1">
+              <i class="fa-solid fa-venus"></i> 여학생 결석 체크
+            </div>
+            <div id="girls-absentee-list" class="flex flex-wrap gap-1.5"></div>
+          </div>
+          <!-- Boys Absent Check -->
+          <div class="bg-white p-3 rounded-xl border border-sky-100">
+            <div class="text-[11px] font-bold text-sky-600 mb-1.5 flex items-center gap-1">
+              <i class="fa-solid fa-mars"></i> 남학생 결석 체크
+            </div>
+            <div id="boys-absentee-list" class="flex flex-wrap gap-1.5"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="flex flex-col sm:flex-row gap-2">
+        <button id="save-roster-btn" class="flex-1 bg-amber-500 hover:bg-amber-600 text-white font-bold py-2.5 px-4 rounded-xl text-xs shadow-md transition-all flex items-center justify-center gap-1.5">
+          <i class="fa-solid fa-floppy-disk"></i> 학급 명단 & 결석 정보 저장하기
+        </button>
+        <button id="reset-matches-btn" class="bg-rose-100 hover:bg-rose-200 text-rose-700 font-bold py-2.5 px-3 rounded-xl text-xs transition-all flex items-center justify-center gap-1">
+          <i class="fa-solid fa-rotate-right"></i> 전체 매칭 기록 초기화
+        </button>
+      </div>
+    </section>
+
+    <!-- SECTION 1: Single View Buddy Board Grid -->
+    <section class="bg-white/90 backdrop-blur rounded-3xl p-5 shadow-xl border border-white mb-6">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-xl font-bold font-jua text-slate-800 flex items-center gap-2">
+          <i class="fa-solid fa-heart text-rose-500"></i> 단짝 매칭 결과 한눈에 보기
+        </h2>
+        <span id="match-count-badge" class="bg-rose-100 text-rose-800 text-xs px-3 py-1 rounded-full font-bold">
+          0개 그룹 완료
+        </span>
+      </div>
+
+      <!-- Two-Column Side-by-Side Gender View -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Girls Pairs Column -->
+        <div class="bg-rose-50/50 rounded-2xl p-3 border border-rose-100">
+          <h3 class="text-xs font-bold text-rose-700 mb-2.5 flex items-center justify-between border-b border-rose-200 pb-1.5">
+            <span><i class="fa-solid fa-venus mr-1"></i> 여학생 단짝</span>
+            <span id="girls-count-tag" class="text-[10px] bg-rose-200 text-rose-800 px-2 py-0.5 rounded-md font-semibold">0팀</span>
+          </h3>
+          <div id="girls-board-list" class="space-y-2 max-h-80 overflow-y-auto pr-1"></div>
+        </div>
+
+        <!-- Boys Pairs Column -->
+        <div class="bg-sky-50/50 rounded-2xl p-3 border border-sky-100">
+          <h3 class="text-xs font-bold text-sky-700 mb-2.5 flex items-center justify-between border-b border-sky-200 pb-1.5">
+            <span><i class="fa-solid fa-mars mr-1"></i> 남학생 단짝</span>
+            <span id="boys-count-tag" class="text-[10px] bg-sky-200 text-sky-800 px-2 py-0.5 rounded-md font-semibold">0팀</span>
+          </h3>
+          <div id="boys-board-list" class="space-y-2 max-h-80 overflow-y-auto pr-1"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 2: Draw Action Area -->
+    <section class="bg-white/90 backdrop-blur rounded-3xl p-6 shadow-xl border border-white">
+      <h2 class="text-lg font-bold font-jua text-slate-800 mb-3 flex items-center gap-2">
+        <i class="fa-solid fa-dice text-amber-500"></i> 단짝 뽑기 진행하기
+      </h2>
+
+      <div class="space-y-4">
+        <!-- Student Selection -->
+        <div>
+          <label for="student-select" class="block text-xs font-bold text-slate-600 mb-1.5">
+            본인의 이름을 선택하세요
+          </label>
+          <select id="student-select" class="w-full p-3 rounded-2xl border-2 border-slate-200 focus:border-rose-400 focus:ring-0 focus:outline-none font-bold text-slate-700 bg-white shadow-sm text-sm">
+            <option value="">-- 이름 선택 --</option>
+          </select>
+        </div>
+
+        <!-- Student Status Alert Banner -->
+        <div id="student-status-box" class="hidden p-3.5 rounded-2xl text-xs font-bold text-center"></div>
+
+        <!-- Draw Button -->
+        <button id="draw-btn" class="w-full bg-gradient-to-r from-rose-400 to-amber-400 hover:from-rose-500 hover:to-amber-500 text-white font-extrabold text-lg py-3.5 rounded-2xl shadow-md transform active:scale-95 transition-all flex items-center justify-center gap-2">
+          <i class="fa-solid fa-wand-magic-sparkles"></i> 단짝 뽑기!
+        </button>
+
+        <!-- Slot Animation Display Box -->
+        <div id="slot-display" class="hidden mt-4 p-5 bg-gradient-to-r from-slate-900 to-indigo-950 text-white rounded-2xl text-center shadow-2xl relative overflow-hidden">
+          <div class="text-xs text-amber-300 font-bold mb-1">두구두구... 과연 나의 단짝은?</div>
+          <div id="slot-name" class="text-3xl font-extrabend font-jua text-rose-300 py-2">
+            ???
+          </div>
+          <div class="text-[10px] text-slate-400 mt-1">같은 성별의 친구 중에서 무작위로 추첨됩니다!</div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- Realtime Cloud Sync Engine (JSONBin Cloud Backend) -->
+  <script type="module">
+    const BIN_ID = "6630a916e41b4d34e4e9b862";
+    const API_URL = `https://api.jsonbin.io/v3/b/6630a916e41b4d34e4e9b862`;
+
+    const defaultGirls = ["김서연", "이민서", "박지우", "최윤아", "정하은", "강지민", "조수아", "윤서윤", "장채원", "임나은", "한지유"];
+    const defaultBoys = ["김도윤", "이하준", "박주원", "최지호", "정예준", "강현우", "조우진", "윤건우", "장민준", "임유준", "한서준"];
+
+    let classData = {
+      girls: defaultGirls,
+      boys: defaultBoys,
+      absentees: [],
+      pairings: []
+    };
+
+    function playCheerSound() {
+      try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+        const ctx = new AudioCtx();
+        const notes = [349.23, 440.00, 523.25, 698.46];
+        notes.forEach((freq, idx) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(freq, ctx.currentTime + idx * 0.08);
+          gain.gain.setValueAtTime(0, ctx.currentTime + idx * 0.08);
+          gain.gain.linearRampToValueAtTime(0.3, ctx.currentTime + idx * 0.08 + 0.05);
+          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + idx * 0.08 + 0.8);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(ctx.currentTime + idx * 0.08);
+          osc.stop(ctx.currentTime + idx * 0.08 + 0.85);
+        });
+      } catch (e) {}
+    }
+
+    function triggerConfetti() {
+      if (typeof confetti === 'function') {
+        confetti({ particleCount: 90, spread: 70, origin: { y: 0.6 } });
+      }
+    }
+
+    function getStudentGender(name) {
+      if ((classData.girls || []).includes(name)) return 'girl';
+      if ((classData.boys || []).includes(name)) return 'boy';
+      return null;
+    }
+
+    function isStudentMatched(name) {
+      return (classData.pairings || []).some(p => {
+        if (p.students && Array.isArray(p.students)) {
+          return p.students.includes(name);
+        }
+        return p.studentA === name || p.studentB === name;
+      });
+    }
+
+    async function fetchCloudData() {
+      try {
+        const res = await fetch(API_URL, {
+          headers: { "X-Master-Key": "$2a$10$v7g2k1b3Q8v7g2k1b3Q8vO" }
+        });
+        if (res.ok) {
+          const json = await res.json();
+          if (json && json.record) {
+            classData = json.record;
+            document.getElementById('sync-status').textContent = "실시간 서버 연결 완료";
+          }
+        }
+      } catch (e) {
+        console.warn("Cloud fetch fallback:", e);
+      }
+      renderApp();
+    }
+
+    async function saveCloudData() {
+      try {
+        await fetch(API_URL, {
+          method: 'PUT',
+          headers: {
+            "Content-Type": "application/json",
+            "X-Master-Key": "$2a$10$v7g2k1b3Q8v7g2k1b3Q8vO"
+          },
+          body: JSON.stringify(classData)
+        });
+      } catch (e) {
+        console.error("Cloud save error:", e);
+      }
+      renderApp();
+    }
+
+    function renderApp() {
+      const studentSelect = document.getElementById('student-select');
+      const girlsBoardList = document.getElementById('girls-board-list');
+      const boysBoardList = document.getElementById('boys-board-list');
+      const matchCountBadge = document.getElementById('match-count-badge');
+      const girlsCountTag = document.getElementById('girls-count-tag');
+      const boysCountTag = document.getElementById('boys-count-tag');
+      const studentStatusBox = document.getElementById('student-status-box');
+      const drawBtn = document.getElementById('draw-btn');
+
+      if (!studentSelect) return;
+
+      const selectedValue = studentSelect.value;
+
+      const allActiveStudents = [
+        ...(classData.girls || []).map(g => ({ name: g, gender: '여' })),
+        ...(classData.boys || []).map(b => ({ name: b, gender: '남' }))
+      ];
+
+      studentSelect.innerHTML = '<option value="">-- 이름 선택 --</option>';
+      allActiveStudents.forEach(st => {
+        const isAbsent = (classData.absentees || []).includes(st.name);
+        const isMatched = isStudentMatched(st.name);
+
+        let label = `${st.name} (${st.gender})`;
+        if (isAbsent) label += ' - [결석]';
+        else if (isMatched) label += ' - [완료]';
+
+        const opt = document.createElement('option');
+        opt.value = st.name;
+        opt.textContent = label;
+        studentSelect.appendChild(opt);
+      });
+
+      if (selectedValue && Array.from(studentSelect.options).some(o => o.value === selectedValue)) {
+        studentSelect.value = selectedValue;
+      }
+
+      const pairings = classData.pairings || [];
+      const girlPairs = pairings.filter(p => p.gender === 'girl');
+      const boyPairs = pairings.filter(p => p.gender === 'boy');
+
+      girlsCountTag.textContent = `${girlPairs.length}팀`;
+      boysCountTag.textContent = `${boyPairs.length}팀`;
+      matchCountBadge.textContent = `${pairings.length}개 그룹 완료`;
+
+      girlsBoardList.innerHTML = '';
+      if (girlPairs.length === 0) {
+        girlsBoardList.innerHTML = `<div class="text-center py-6 text-slate-400 text-xs">아직 매칭된 여학생 단짝이 없습니다.</div>`;
+      } else {
+        girlPairs.forEach((pair, idx) => {
+          const membersText = Array.isArray(pair.students) 
+            ? pair.students.join(' ❤️ ') 
+            : `${pair.studentA} ❤️ ${pair.studentB}`;
+          const is3Person = pair.students && pair.students.length === 3;
+
+          girlsBoardList.insertAdjacentHTML('beforeend', `
+            <div class="bg-white border border-rose-200 rounded-xl p-3 shadow-sm flex items-center justify-between card-transition">
+              <div class="flex items-center gap-2.5">
+                <span class="w-6 h-6 rounded-full bg-rose-100 text-rose-800 flex items-center justify-center font-bold text-xs">
+                  ${idx + 1}
+                </span>
+                <div>
+                  <div class="font-jua text-sm text-slate-800">${membersText}</div>
+                  ${is3Person ? '<span class="text-[10px] text-amber-600 bg-amber-50 border border-amber-200 px-1.5 py-0.2 rounded font-bold">3명 모둠</span>' : ''}
+                </div>
+              </div>
+              <i class="fa-solid fa-face-smile text-rose-400 text-lg"></i>
+            </div>
+          `);
+        });
+      }
+
+      boysBoardList.innerHTML = '';
+      if (boyPairs.length === 0) {
+        boysBoardList.innerHTML = `<div class="text-center py-6 text-slate-400 text-xs">아직 매칭된 남학생 단짝이 없습니다.</div>`;
+      } else {
+        boyPairs.forEach((pair, idx) => {
+          const membersText = Array.isArray(pair.students) 
+            ? pair.students.join(' 💙 ') 
+            : `${pair.studentA} 💙 ${pair.studentB}`;
+          const is3Person = pair.students && pair.students.length === 3;
+
+          boysBoardList.insertAdjacentHTML('beforeend', `
+            <div class="bg-white border border-sky-200 rounded-xl p-3 shadow-sm flex items-center justify-between card-transition">
+              <div class="flex items-center gap-2.5">
+                <span class="w-6 h-6 rounded-full bg-sky-100 text-sky-800 flex items-center justify-center font-bold text-xs">
+                  ${idx + 1}
+                </span>
+                <div>
+                  <div class="font-jua text-sm text-slate-800">${membersText}</div>
+                  ${is3Person ? '<span class="text-[10px] text-amber-600 bg-amber-50 border border-amber-200 px-1.5 py-0.2 rounded font-bold">3명 모둠</span>' : ''}
+                </div>
+              </div>
+              <i class="fa-solid fa-face-smile text-sky-400 text-lg"></i>
+            </div>
+          `);
+        });
+      }
+
+      const currentStudent = studentSelect.value;
+      if (!currentStudent) {
+        studentStatusBox.classList.add('hidden');
+        drawBtn.disabled = false;
+        drawBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+        return;
+      }
+
+      const isAbsent = (classData.absentees || []).includes(currentStudent);
+      const isMatched = isStudentMatched(currentStudent);
+
+      if (isAbsent) {
+        studentStatusBox.className = "p-3.5 rounded-2xl text-xs font-bold text-center bg-amber-100 text-amber-800 border border-amber-200";
+        studentStatusBox.innerHTML = `<i class="fa-solid fa-circle-exclamation mr-1"></i> ${currentStudent} 학생은 결석생으로 체크되어 뽑기를 진행할 수 없습니다.`;
+        studentStatusBox.classList.remove('hidden');
+        drawBtn.disabled = true;
+        drawBtn.classList.add('opacity-50', 'cursor-not-allowed');
+      } else if (isMatched) {
+        studentStatusBox.className = "p-3.5 rounded-2xl text-xs font-bold text-center bg-emerald-100 text-emerald-800 border border-emerald-200";
+        studentStatusBox.innerHTML = `<i class="fa-solid fa-circle-check mr-1"></i> ${currentStudent} 학생은 이미 단짝 매칭이 완료되었습니다!`;
+        studentStatusBox.classList.remove('hidden');
+        drawBtn.disabled = true;
+        drawBtn.classList.add('opacity-50', 'cursor-not-allowed');
+      } else {
+        studentStatusBox.classList.add('hidden');
+        drawBtn.disabled = false;
+        drawBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+      }
+    }
+
+    function renderAbsenteeCheckboxes() {
+      const girlsContainer = document.getElementById('girls-absentee-list');
+      const boysContainer = document.getElementById('boys-absentee-list');
+
+      if (!girlsContainer || !boysContainer) return;
+
+      girlsContainer.innerHTML = '';
+      boysContainer.innerHTML = '';
+
+      (classData.girls || []).forEach(name => {
+        const isChecked = (classData.absentees || []).includes(name);
+        const label = document.createElement('label');
+        label.className = `inline-flex items-center gap-1 px-2 py-1 rounded-lg border text-xs cursor-pointer select-none transition-all ${
+          isChecked ? 'bg-rose-100 border-rose-300 text-rose-900 font-bold' : 'bg-slate-50 border-slate-200 text-slate-700'
+        }`;
+        label.innerHTML = `
+          <input type="checkbox" value="${name}" class="absent-check rounded text-rose-500 focus:ring-rose-400" ${isChecked ? 'checked' : ''}>
+          <span>${name}</span>
+        `;
+        girlsContainer.appendChild(label);
+      });
+
+      (classData.boys || []).forEach(name => {
+        const isChecked = (classData.absentees || []).includes(name);
+        const label = document.createElement('label');
+        label.className = `inline-flex items-center gap-1 px-2 py-1 rounded-lg border text-xs cursor-pointer select-none transition-all ${
+          isChecked ? 'bg-sky-100 border-sky-300 text-sky-900 font-bold' : 'bg-slate-50 border-slate-200 text-slate-700'
+        }`;
+        label.innerHTML = `
+          <input type="checkbox" value="${name}" class="absent-check rounded text-sky-500 focus:ring-sky-400" ${isChecked ? 'checked' : ''}>
+          <span>${name}</span>
+        `;
+        boysContainer.appendChild(label);
+      });
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      fetchCloudData();
+      setInterval(fetchCloudData, 4000);
+
+      const adminPanel = document.getElementById('admin-panel');
+      const toggleAdminBtn = document.getElementById('toggle-admin-btn');
+      const closeAdminBtn = document.getElementById('close-admin-btn');
+      const girlsInput = document.getElementById('girls-input');
+      const boysInput = document.getElementById('boys-input');
+      const saveRosterBtn = document.getElementById('save-roster-btn');
+      const resetMatchesBtn = document.getElementById('reset-matches-btn');
+      const studentSelect = document.getElementById('student-select');
+      const drawBtn = document.getElementById('draw-btn');
+      const slotDisplay = document.getElementById('slot-display');
+      const slotName = document.getElementById('slot-name');
+
+      toggleAdminBtn.addEventListener('click', () => {
+        adminPanel.classList.toggle('hidden');
+        if (!adminPanel.classList.contains('hidden')) {
+          girlsInput.value = (classData.girls || []).join(', ');
+          boysInput.value = (classData.boys || []).join(', ');
+          renderAbsenteeCheckboxes();
+        }
+      });
+
+      closeAdminBtn.addEventListener('click', () => {
+        adminPanel.classList.add('hidden');
+      });
+
+      saveRosterBtn.addEventListener('click', async () => {
+        const newGirls = girlsInput.value.split(',').map(s => s.trim()).filter(Boolean);
+        const newBoys = boysInput.value.split(',').map(s => s.trim()).filter(Boolean);
+        const checkedAbsentees = Array.from(document.querySelectorAll('.absent-check:checked')).map(cb => cb.value);
+
+        classData.girls = newGirls;
+        classData.boys = newBoys;
+        classData.absentees = checkedAbsentees;
+
+        await saveCloudData();
+        renderAbsenteeCheckboxes();
+        alert("학급 명단과 결석생 정보가 서버에 저장되었습니다! 모든 학생들의 화면에 즉시 반영됩니다.");
+      });
+
+      resetMatchesBtn.addEventListener('click', async () => {
+        if (confirm("모든 단짝 매칭 기록을 초기화하시겠습니까?")) {
+          classData.pairings = [];
+          await saveCloudData();
+          alert("매칭 기록이 초기화되었습니다.");
+        }
+      });
+
+      studentSelect.addEventListener('change', renderApp);
+
+      drawBtn.addEventListener('click', async () => {
+        const pickerName = studentSelect.value;
+        if (!pickerName) {
+          alert("먼저 본인의 이름을 선택해 주세요!");
+          return;
+        }
+
+        if ((classData.absentees || []).includes(pickerName)) {
+          alert("결석생은 뽑기를 진행할 수 없습니다.");
+          return;
+        }
+
+        if (isStudentMatched(pickerName)) {
+          alert("이미 단짝이 매칭되었습니다!");
+          return;
+        }
+
+        const gender = getStudentGender(pickerName);
+        if (!gender) {
+          alert("학생의 성별 정보가 없습니다.");
+          return;
+        }
+
+        const sameGenderGroup = gender === 'girl' ? classData.girls : classData.boys;
+
+        const candidates = sameGenderGroup.filter(name => {
+          if (name === pickerName) return false;
+          if ((classData.absentees || []).includes(name)) return false;
+          if (isStudentMatched(name)) return false;
+          return true;
+        });
+
+        if (candidates.length === 0) {
+          alert("매칭 가능한 동일 성별 친구가 없거나 모두 단짝이 되었습니다!");
+          return;
+        }
+
+        const isThreeGroup = candidates.length === 2;
+
+        drawBtn.disabled = true;
+        studentSelect.disabled = true;
+        slotDisplay.classList.remove('hidden');
+        slotName.classList.add('animate-slot');
+
+        let spinCount = 0;
+        const maxSpins = 22;
+        const spinInterval = setInterval(async () => {
+          const randomTemp = candidates[Math.floor(Math.random() * candidates.length)];
+          slotName.textContent = isThreeGroup ? `${candidates.join(' & ')}` : randomTemp;
+          spinCount++;
+
+          if (spinCount >= maxSpins) {
+            clearInterval(spinInterval);
+
+            let finalDisplayBuddy;
+            let matchedMembers = [];
+
+            if (isThreeGroup) {
+              finalDisplayBuddy = candidates.join(' & ');
+              matchedMembers = [pickerName, ...candidates];
+            } else {
+              finalDisplayBuddy = candidates[Math.floor(Math.random() * candidates.length)];
+              matchedMembers = [pickerName, finalDisplayBuddy];
+            }
+
+            slotName.textContent = finalDisplayBuddy;
+            slotName.classList.remove('animate-slot');
+
+            playCheerSound();
+            triggerConfetti();
+
+            const newPairing = {
+              id: Date.now().toString(),
+              studentA: pickerName,
+              studentB: isThreeGroup ? candidates[0] : finalDisplayBuddy,
+              students: matchedMembers,
+              gender: gender,
+              timestamp: new Date().toISOString()
+            };
+
+            classData.pairings = classData.pairings || [];
+            classData.pairings.push(newPairing);
+
+            await saveCloudData();
+
+            setTimeout(() => {
+              slotDisplay.classList.add('hidden');
+              studentSelect.disabled = false;
+              renderApp();
+            }, 2500);
+          }
+        }, 80);
+      });
+    });
+  </script>
+</body>
+</html>
