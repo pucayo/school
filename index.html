@@ -37,6 +37,24 @@
 </head>
 <body class="bg-gradient-to-br from-amber-50 via-rose-50 to-sky-50 min-h-screen text-slate-800 pb-12">
 
+  <!-- Custom Toast Notification -->
+  <div id="toast-box" class="fixed top-4 left-1/2 -translate-x-1/2 z-50 hidden max-w-sm w-11/12 bg-slate-900 text-white px-4 py-3 rounded-2xl shadow-2xl text-xs font-bold text-center transition-all"></div>
+
+  <!-- Custom Confirm Modal -->
+  <div id="confirm-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl text-center">
+      <div class="w-12 h-12 rounded-full bg-rose-100 text-rose-500 flex items-center justify-center mx-auto mb-3 text-xl">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+      </div>
+      <h3 class="font-jua text-lg text-slate-800 mb-1">매칭 기록 초기화</h3>
+      <p id="confirm-msg" class="text-xs text-slate-500 mb-5">구글 시트에 저장된 모든 매칭 기록을 지우시겠습니까?</p>
+      <div class="flex gap-2">
+        <button id="confirm-cancel-btn" class="flex-1 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs">취소</button>
+        <button id="confirm-ok-btn" class="flex-1 py-2.5 rounded-xl bg-rose-500 hover:bg-rose-600 text-white font-bold text-xs">초기화하기</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Main Container -->
   <div class="max-w-4xl mx-auto px-4 py-6">
 
@@ -50,10 +68,13 @@
       </h1>
       <p class="text-slate-500 text-xs sm:text-sm mt-1">서로를 알아가는 행복한 단짝 시간!</p>
 
-      <!-- Status Badge -->
-      <div class="mt-2 flex items-center justify-center gap-1.5 text-[11px] font-semibold text-emerald-600">
-        <span id="sync-dot" class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-        <span id="sync-status">학급 명단 및 데이터 정상 로드됨</span>
+      <!-- Real-time Google Sheets Sync Status Badge -->
+      <div class="mt-2 flex items-center justify-center gap-2 text-[11px] font-semibold">
+        <span id="sync-dot" class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+        <span id="sync-status" class="text-slate-600">구글 시트 데이터 불러오는 중...</span>
+        <button id="manual-refresh-btn" class="ml-1 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 px-2 py-0.5 rounded-lg text-[10px] shadow-sm transition-all">
+          <i class="fa-solid fa-arrows-rotate"></i> 새로고침
+        </button>
       </div>
 
       <!-- Teacher Settings Toggle Button -->
@@ -67,84 +88,27 @@
     <section id="admin-panel" class="hidden bg-white border-2 border-amber-300 rounded-3xl p-5 mb-6 shadow-xl relative">
       <div class="flex items-center justify-between mb-4 pb-2 border-b border-slate-100">
         <h2 class="text-lg font-bold text-amber-900 font-jua flex items-center gap-2">
-          <i class="fa-solid fa-sliders text-amber-500"></i> 학급 명단 및 결석생 관리
+          <i class="fa-solid fa-table text-emerald-600"></i> 구글 스프레드시트 연동 관리
         </h2>
         <button id="close-admin-btn" class="text-slate-400 hover:text-slate-600 text-sm p-1">
           <i class="fa-solid fa-xmark text-lg"></i>
         </button>
       </div>
 
-      <!-- Info Box -->
-      <div class="mb-4 bg-amber-50 border border-amber-200 rounded-2xl p-4 text-xs text-amber-900 leading-relaxed">
-        <div class="font-bold flex items-center gap-1.5 mb-1 text-amber-950">
-          <i class="fa-solid fa-circle-info text-amber-600"></i> 저장 후 생성되는 링크를 학생들에게 공유하세요!
+      <div class="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 text-xs text-emerald-950 leading-relaxed mb-4">
+        <div class="font-bold flex items-center gap-1.5 mb-1 text-emerald-800">
+          <i class="fa-solid fa-circle-check text-emerald-600"></i> 학생 명단 및 결석생 수정 방법
         </div>
-        이름을 수정하거나 결석생을 체크한 뒤 아래 저장 버튼을 누르면 학생용 링크가 자동으로 생성됩니다.
+        연결된 <strong>구글 스프레드시트(Roster 시트)</strong>에서 학생 이름이나 결석(O) 여부를 수정하시면, 4초마다 자동으로 모든 학생 스마트폰에 실시간 반영됩니다!
       </div>
 
-      <!-- Gender Name Inputs -->
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-        <!-- Girls List -->
-        <div class="bg-rose-50/70 p-3.5 rounded-2xl border border-rose-200">
-          <label class="block text-xs font-bold text-rose-700 mb-1 flex items-center gap-1">
-            <i class="fa-solid fa-venus"></i> 여학생 명단 (쉼표로 구분)
-          </label>
-          <textarea id="girls-input" rows="3" class="w-full text-xs p-2.5 rounded-xl border border-rose-200 focus:ring-2 focus:ring-rose-400 focus:outline-none resize-none bg-white" placeholder="김서연, 이민서..."></textarea>
-        </div>
-        <!-- Boys List -->
-        <div class="bg-sky-50/70 p-3.5 rounded-2xl border border-sky-200">
-          <label class="block text-xs font-bold text-sky-700 mb-1 flex items-center gap-1">
-            <i class="fa-solid fa-mars"></i> 남학생 명단 (쉼표로 구분)
-          </label>
-          <textarea id="boys-input" rows="3" class="w-full text-xs p-2.5 rounded-xl border border-sky-200 focus:ring-2 focus:ring-sky-400 focus:outline-none resize-none bg-white" placeholder="김도윤, 이하준..."></textarea>
-        </div>
-      </div>
-
-      <!-- Separated Absentee Checklists -->
-      <div class="mb-5 bg-slate-50 p-4 rounded-2xl border border-slate-200">
-        <label class="block text-xs font-bold text-slate-700 mb-2.5 flex items-center gap-1.5">
-          <i class="fa-solid fa-user-slash text-amber-600"></i> Today's 결석생 체크 (체크 시 매칭 대상에서 제외)
-        </label>
-        
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <!-- Girls Absent Check -->
-          <div class="bg-white p-3 rounded-xl border border-rose-100">
-            <div class="text-[11px] font-bold text-rose-600 mb-1.5 flex items-center gap-1">
-              <i class="fa-solid fa-venus"></i> 여학생 결석 체크
-            </div>
-            <div id="girls-absentee-list" class="flex flex-wrap gap-1.5"></div>
-          </div>
-          <!-- Boys Absent Check -->
-          <div class="bg-white p-3 rounded-xl border border-sky-100">
-            <div class="text-[11px] font-bold text-sky-600 mb-1.5 flex items-center gap-1">
-              <i class="fa-solid fa-mars"></i> 남학생 결석 체크
-            </div>
-            <div id="boys-absentee-list" class="flex flex-wrap gap-1.5"></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Action Buttons -->
-      <div class="flex flex-col sm:flex-row gap-2 mb-3">
-        <button id="save-roster-btn" class="flex-1 bg-amber-500 hover:bg-amber-600 text-white font-bold py-2.5 px-4 rounded-xl text-xs shadow-md transition-all flex items-center justify-center gap-1.5">
-          <i class="fa-solid fa-floppy-disk"></i> 명단 & 결석 정보 저장하고 학생 링크 만들기
+      <div class="flex flex-col sm:flex-row gap-2">
+        <button id="force-sync-btn" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-4 rounded-xl text-xs shadow-md transition-all flex items-center justify-center gap-1.5">
+          <i class="fa-solid fa-cloud-arrow-down"></i> 구글 시트 최신 명단 지금 바로 불러오기
         </button>
-        <button id="reset-matches-btn" class="bg-rose-100 hover:bg-rose-200 text-rose-700 font-bold py-2.5 px-3 rounded-xl text-xs transition-all flex items-center justify-center gap-1">
-          <i class="fa-solid fa-rotate-right"></i> 매칭 기록 초기화
+        <button id="reset-matches-btn" class="bg-rose-100 hover:bg-rose-200 text-rose-700 font-bold py-2.5 px-4 rounded-xl text-xs transition-all flex items-center justify-center gap-1.5">
+          <i class="fa-solid fa-rotate-right"></i> 매칭 기록 전체 초기화
         </button>
-      </div>
-
-      <!-- Generated Student Link Box -->
-      <div id="link-box" class="hidden bg-amber-100 border border-amber-300 rounded-xl p-3 text-xs text-amber-900">
-        <div class="font-bold mb-1 flex items-center gap-1 text-amber-950">
-          <i class="fa-solid fa-link text-amber-600"></i> 학생들에게 전달할 전용 링크 (주소가 자동 생성되었습니다)
-        </div>
-        <div class="flex gap-2 mt-2">
-          <input type="text" id="student-share-url" readonly class="w-full text-[11px] p-2 rounded-lg border border-amber-300 bg-white select-all text-slate-700 font-mono">
-          <button id="copy-link-btn" class="bg-amber-600 hover:bg-amber-700 text-white font-bold px-3 py-1.5 rounded-lg text-xs whitespace-nowrap shadow-sm">
-            복사하기
-          </button>
-        </div>
       </div>
     </section>
 
@@ -194,7 +158,7 @@
             본인의 이름을 선택하세요
           </label>
           <select id="student-select" class="w-full p-3 rounded-2xl border-2 border-slate-200 focus:border-rose-400 focus:ring-0 focus:outline-none font-bold text-slate-700 bg-white shadow-sm text-sm">
-            <option value="">-- 이름 선택 --</option>
+            <option value="">-- 명단 불러오는 중... --</option>
           </select>
         </div>
 
@@ -209,7 +173,7 @@
         <!-- Slot Animation Display Box -->
         <div id="slot-display" class="hidden mt-4 p-5 bg-gradient-to-r from-slate-900 to-indigo-950 text-white rounded-2xl text-center shadow-2xl relative overflow-hidden">
           <div class="text-xs text-amber-300 font-bold mb-1">두구두구... 과연 나의 단짝은?</div>
-          <div id="slot-name" class="text-3xl font-extrabend font-jua text-rose-300 py-2">
+          <div id="slot-name" class="text-3xl font-extrabold font-jua text-rose-300 py-2">
             ???
           </div>
           <div class="text-[10px] text-slate-400 mt-1">같은 성별의 친구 중에서 무작위로 추첨됩니다!</div>
@@ -219,64 +183,98 @@
 
   </div>
 
-  <!-- JavaScript Engine with Robust Persistence & URL Encoding -->
+  <!-- JavaScript Engine with Real-Time Google Sheets API Sync -->
   <script>
-    const STORAGE_KEY = "class_buddy_data_v2";
-
-    const defaultGirls = ["김서연", "이민서", "박지우", "최윤아", "정하은", "강지민", "조수아", "윤서윤", "장채원", "임나은", "한지유"];
-    const defaultBoys = ["김도윤", "이하준", "박주원", "최지호", "정예준", "강현우", "조우진", "윤건우", "장민준", "임유준", "한서준"];
+    // =========================================================================
+    // [선생님 설정란] 아래 큰따옴표("") 안에 구글 Apps Script 웹 앱 URL을 넣어주세요!
+    // =========================================================================
+    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyWGXY3fEJVnoDkFxfzrjMpXNxuz7LAl8fFiYluEb9GQT-AOEL4OpOqP2Ke4bpAW-RJ/exec";
 
     let classData = {
-      girls: defaultGirls,
-      boys: defaultBoys,
+      girls: [],
+      boys: [],
       absentees: [],
       pairings: []
     };
 
-    function loadClassData() {
-      // 1. Check URL parameters for embedded data
-      const urlParams = new URLSearchParams(window.location.search);
-      const dataParam = urlParams.get('data');
-      if (dataParam) {
-        try {
-          const decoded = JSON.parse(decodeURIComponent(escape(atob(dataParam))));
-          classData = decoded;
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(classData));
-          return;
-        } catch (e) {
-          console.error("URL data parse error", e);
-        }
-      }
+    let isDrawing = false;
+    let isSyncing = false;
 
-      // 2. Check localStorage
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        try {
-          classData = JSON.parse(saved);
-          return;
-        } catch (e) {
-          console.error("LocalStorage parse error", e);
-        }
-      }
-
-      // 3. Defaults
-      classData = {
-        girls: defaultGirls,
-        boys: defaultBoys,
-        absentees: [],
-        pairings: []
-      };
+    function showToast(message, isError = false) {
+      const toast = document.getElementById('toast-box');
+      toast.textContent = message;
+      toast.className = `fixed top-4 left-1/2 -translate-x-1/2 z-50 max-w-sm w-11/12 px-4 py-3 rounded-2xl shadow-2xl text-xs font-bold text-center transition-all ${
+        isError ? 'bg-rose-600 text-white' : 'bg-slate-900 text-white'
+      }`;
+      toast.classList.remove('hidden');
+      setTimeout(() => {
+        toast.classList.add('hidden');
+      }, 3000);
     }
 
-    function saveClassData() {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(classData));
+    function updateSyncUI(status, type = 'ok') {
+      const dot = document.getElementById('sync-dot');
+      const text = document.getElementById('sync-status');
+      text.textContent = status;
+      if (type === 'ok') {
+        dot.className = "w-2 h-2 rounded-full bg-emerald-500";
+        text.className = "text-emerald-700";
+      } else if (type === 'loading') {
+        dot.className = "w-2 h-2 rounded-full bg-amber-500 animate-ping";
+        text.className = "text-amber-700";
+      } else {
+        dot.className = "w-2 h-2 rounded-full bg-rose-500";
+        text.className = "text-rose-600";
+      }
     }
 
-    function getStudentShareLink() {
-      const jsonStr = JSON.stringify(classData);
-      const encoded = btoa(unescape(encodeURIComponent(jsonStr)));
-      const baseUrl = window.location.origin + window.location.pathname;
-      return `${baseUrl}?data=${encoded}`;
+    async function fetchFromGoogleSheets(silent = false) {
+      if (!GOOGLE_SCRIPT_URL || !GOOGLE_SCRIPT_URL.startsWith("http")) {
+        updateSyncUI("구글 시트 URL이 아직 연결되지 않았습니다", "error");
+        return false;
+      }
+      if (isSyncing || isDrawing) return false;
+
+      isSyncing = true;
+      if (!silent) updateSyncUI("구글 시트에서 최신 명단 동기화 중...", "loading");
+
+      try {
+        const res = await fetch(`${GOOGLE_SCRIPT_URL}?t=${Date.now()}`);
+        const data = await res.json();
+
+        classData = {
+          girls: data.girls || [],
+          boys: data.boys || [],
+          absentees: data.absentees || [],
+          pairings: data.pairings || []
+        };
+
+        renderApp();
+        updateSyncUI("구글 시트 실시간 동기화 완료", "ok");
+        isSyncing = false;
+        return true;
+      } catch (err) {
+        console.error("Google Sheets fetch error:", err);
+        updateSyncUI("구글 시트 연결 오류 (배포 권한 확인 필요)", "error");
+        isSyncing = false;
+        return false;
+      }
+    }
+
+    async function postToGoogleSheets(payload) {
+      if (!GOOGLE_SCRIPT_URL || !GOOGLE_SCRIPT_URL.startsWith("http")) return false;
+      try {
+        await fetch(GOOGLE_SCRIPT_URL, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify(payload)
+        });
+        return true;
+      } catch (err) {
+        console.error("Google Sheets post error:", err);
+        return false;
+      }
     }
 
     function playCheerSound() {
@@ -318,7 +316,7 @@
         if (p.students && Array.isArray(p.students)) {
           return p.students.includes(name);
         }
-        return p.studentA === name || p.studentB === name;
+        return false;
       });
     }
 
@@ -341,7 +339,10 @@
         ...(classData.boys || []).map(b => ({ name: b, gender: '남' }))
       ];
 
-      studentSelect.innerHTML = '<option value="">-- 이름 선택 --</option>';
+      studentSelect.innerHTML = allActiveStudents.length > 0 
+        ? '<option value="">-- 이름 선택 --</option>' 
+        : '<option value="">-- 구글 시트에 학생 명단을 입력해 주세요 --</option>';
+
       allActiveStudents.forEach(st => {
         const isAbsent = (classData.absentees || []).includes(st.name);
         const isMatched = isStudentMatched(st.name);
@@ -373,10 +374,8 @@
         girlsBoardList.innerHTML = `<div class="text-center py-6 text-slate-400 text-xs">아직 매칭된 여학생 단짝이 없습니다.</div>`;
       } else {
         girlPairs.forEach((pair, idx) => {
-          const membersText = Array.isArray(pair.students) 
-            ? pair.students.join(' ❤️ ') 
-            : `${pair.studentA} ❤️ ${pair.studentB}`;
-          const is3Person = pair.students && pair.students.length === 3;
+          const membersText = pair.students.join(' ❤️ ');
+          const is3Person = pair.students.length === 3;
 
           girlsBoardList.insertAdjacentHTML('beforeend', `
             <div class="bg-white border border-rose-200 rounded-xl p-3 shadow-sm flex items-center justify-between card-transition">
@@ -400,10 +399,8 @@
         boysBoardList.innerHTML = `<div class="text-center py-6 text-slate-400 text-xs">아직 매칭된 남학생 단짝이 없습니다.</div>`;
       } else {
         boyPairs.forEach((pair, idx) => {
-          const membersText = Array.isArray(pair.students) 
-            ? pair.students.join(' 💙 ') 
-            : `${pair.studentA} 💙 ${pair.studentB}`;
-          const is3Person = pair.students && pair.students.length === 3;
+          const membersText = pair.students.join(' 💙 ');
+          const is3Person = pair.students.length === 3;
 
           boysBoardList.insertAdjacentHTML('beforeend', `
             <div class="bg-white border border-sky-200 rounded-xl p-3 shadow-sm flex items-center justify-between card-transition">
@@ -452,135 +449,98 @@
       }
     }
 
-    function renderAbsenteeCheckboxes() {
-      const girlsContainer = document.getElementById('girls-absentee-list');
-      const boysContainer = document.getElementById('boys-absentee-list');
-
-      if (!girlsContainer || !boysContainer) return;
-
-      girlsContainer.innerHTML = '';
-      boysContainer.innerHTML = '';
-
-      (classData.girls || []).forEach(name => {
-        const isChecked = (classData.absentees || []).includes(name);
-        const label = document.createElement('label');
-        label.className = `inline-flex items-center gap-1 px-2 py-1 rounded-lg border text-xs cursor-pointer select-none transition-all ${
-          isChecked ? 'bg-rose-100 border-rose-300 text-rose-900 font-bold' : 'bg-slate-50 border-slate-200 text-slate-700'
-        }`;
-        label.innerHTML = `
-          <input type="checkbox" value="${name}" class="absent-check rounded text-rose-500 focus:ring-rose-400" ${isChecked ? 'checked' : ''}>
-          <span>${name}</span>
-        `;
-        girlsContainer.appendChild(label);
-      });
-
-      (classData.boys || []).forEach(name => {
-        const isChecked = (classData.absentees || []).includes(name);
-        const label = document.createElement('label');
-        label.className = `inline-flex items-center gap-1 px-2 py-1 rounded-lg border text-xs cursor-pointer select-none transition-all ${
-          isChecked ? 'bg-sky-100 border-sky-300 text-sky-900 font-bold' : 'bg-slate-50 border-slate-200 text-slate-700'
-        }`;
-        label.innerHTML = `
-          <input type="checkbox" value="${name}" class="absent-check rounded text-sky-500 focus:ring-sky-400" ${isChecked ? 'checked' : ''}>
-          <span>${name}</span>
-        `;
-        boysContainer.appendChild(label);
-      });
-    }
-
     window.addEventListener('DOMContentLoaded', () => {
-      loadClassData();
-      renderApp();
+      fetchFromGoogleSheets(false);
+      setInterval(() => fetchFromGoogleSheets(true), 4000);
 
       const adminPanel = document.getElementById('admin-panel');
       const toggleAdminBtn = document.getElementById('toggle-admin-btn');
       const closeAdminBtn = document.getElementById('close-admin-btn');
-      const girlsInput = document.getElementById('girls-input');
-      const boysInput = document.getElementById('boys-input');
-      const saveRosterBtn = document.getElementById('save-roster-btn');
+      const manualRefreshBtn = document.getElementById('manual-refresh-btn');
+      const forceSyncBtn = document.getElementById('force-sync-btn');
       const resetMatchesBtn = document.getElementById('reset-matches-btn');
+      const confirmModal = document.getElementById('confirm-modal');
+      const confirmCancelBtn = document.getElementById('confirm-cancel-btn');
+      const confirmOkBtn = document.getElementById('confirm-ok-btn');
       const studentSelect = document.getElementById('student-select');
       const drawBtn = document.getElementById('draw-btn');
       const slotDisplay = document.getElementById('slot-display');
       const slotName = document.getElementById('slot-name');
-      const linkBox = document.getElementById('link-box');
-      const studentShareUrl = document.getElementById('student-share-url');
-      const copyLinkBtn = document.getElementById('copy-link-btn');
 
       toggleAdminBtn.addEventListener('click', () => {
         adminPanel.classList.toggle('hidden');
-        if (!adminPanel.classList.contains('hidden')) {
-          girlsInput.value = (classData.girls || []).join(', ');
-          boysInput.value = (classData.boys || []).join(', ');
-          renderAbsenteeCheckboxes();
-        }
       });
 
       closeAdminBtn.addEventListener('click', () => {
         adminPanel.classList.add('hidden');
       });
 
-      saveRosterBtn.addEventListener('click', () => {
-        const newGirls = girlsInput.value.split(',').map(s => s.trim()).filter(Boolean);
-        const newBoys = boysInput.value.split(',').map(s => s.trim()).filter(Boolean);
-        const checkedAbsentees = Array.from(document.querySelectorAll('.absent-check:checked')).map(cb => cb.value);
-
-        classData.girls = newGirls;
-        classData.boys = newBoys;
-        classData.absentees = checkedAbsentees;
-
-        saveClassData();
-        renderAbsenteeCheckboxes();
-        renderApp();
-
-        // Generate and display share link
-        const shareLink = getStudentShareLink();
-        studentShareUrl.value = shareLink;
-        linkBox.classList.remove('hidden');
-
-        alert("학급 명단과 결석생 정보가 안전하게 저장되었습니다! 아래 생성된 학생용 링크를 복사하여 학생들에게 공유해 주세요.");
+      manualRefreshBtn.addEventListener('click', async () => {
+        const ok = await fetchFromGoogleSheets(false);
+        if (ok) showToast("최신 구글 시트 명단과 매칭 결과를 불러왔습니다!");
       });
 
-      copyLinkBtn.addEventListener('click', () => {
-        studentShareUrl.select();
-        document.execCommand('copy');
-        alert("학생용 링크가 클립보드에 복사되었습니다!");
+      forceSyncBtn.addEventListener('click', async () => {
+        const ok = await fetchFromGoogleSheets(false);
+        if (ok) showToast("구글 시트 최신 명단으로 동기화되었습니다!");
       });
 
       resetMatchesBtn.addEventListener('click', () => {
-        if (confirm("모든 단짝 매칭 기록을 초기화하시겠습니까?")) {
-          classData.pairings = [];
-          saveClassData();
-          renderApp();
-          alert("매칭 기록이 초기화되었습니다.");
-        }
+        confirmModal.classList.remove('hidden');
+      });
+
+      confirmCancelBtn.addEventListener('click', () => {
+        confirmModal.classList.add('hidden');
+      });
+
+      confirmOkBtn.addEventListener('click', async () => {
+        confirmModal.classList.add('hidden');
+        updateSyncUI("구글 시트 기록 초기화 중...", "loading");
+        await postToGoogleSheets({ action: 'resetPairings' });
+        classData.pairings = [];
+        renderApp();
+        setTimeout(() => fetchFromGoogleSheets(false), 1200);
+        showToast("모든 매칭 기록이 초기화되었습니다.");
       });
 
       studentSelect.addEventListener('change', renderApp);
 
-      drawBtn.addEventListener('click', () => {
+      drawBtn.addEventListener('click', async () => {
         const pickerName = studentSelect.value;
         if (!pickerName) {
-          alert("먼저 본인의 이름을 선택해 주세요!");
+          showToast("먼저 본인의 이름을 선택해 주세요!", true);
           return;
         }
 
+        isDrawing = true;
+        drawBtn.disabled = true;
+        updateSyncUI("최신 매칭 현황 확인 중...", "loading");
+        try {
+          const res = await fetch(`${GOOGLE_SCRIPT_URL}?t=${Date.now()}`);
+          const latest = await res.json();
+          classData = {
+            girls: latest.girls || [],
+            boys: latest.boys || [],
+            absentees: latest.absentees || [],
+            pairings: latest.pairings || []
+          };
+        } catch (e) {}
+
         if ((classData.absentees || []).includes(pickerName)) {
-          alert("결석생은 뽑기를 진행할 수 없습니다.");
+          isDrawing = false;
+          renderApp();
+          showToast("결석생은 뽑기를 진행할 수 없습니다.", true);
           return;
         }
 
         if (isStudentMatched(pickerName)) {
-          alert("이미 단짝이 매칭되었습니다!");
+          isDrawing = false;
+          renderApp();
+          showToast("이미 다른 친구와 단짝 매칭이 완료되었습니다!", true);
           return;
         }
 
         const gender = getStudentGender(pickerName);
-        if (!gender) {
-          alert("학생의 성별 정보가 없습니다.");
-          return;
-        }
-
         const sameGenderGroup = gender === 'girl' ? classData.girls : classData.boys;
 
         const candidates = sameGenderGroup.filter(name => {
@@ -591,20 +551,21 @@
         });
 
         if (candidates.length === 0) {
-          alert("매칭 가능한 동일 성별 친구가 없거나 모두 단짝이 되었습니다!");
+          isDrawing = false;
+          renderApp();
+          showToast("매칭 가능한 동일 성별 친구가 없거나 모두 단짝이 되었습니다!", true);
           return;
         }
 
         const isThreeGroup = candidates.length === 2;
 
-        drawBtn.disabled = true;
         studentSelect.disabled = true;
         slotDisplay.classList.remove('hidden');
         slotName.classList.add('animate-slot');
 
         let spinCount = 0;
         const maxSpins = 22;
-        const spinInterval = setInterval(() => {
+        const spinInterval = setInterval(async () => {
           const randomTemp = candidates[Math.floor(Math.random() * candidates.length)];
           slotName.textContent = isThreeGroup ? `${candidates.join(' & ')}` : randomTemp;
           spinCount++;
@@ -631,23 +592,25 @@
 
             const newPairing = {
               id: Date.now().toString(),
-              studentA: pickerName,
-              studentB: isThreeGroup ? candidates[0] : finalDisplayBuddy,
-              students: matchedMembers,
               gender: gender,
-              timestamp: new Date().toISOString()
+              students: matchedMembers,
+              timestamp: new Date().toLocaleTimeString('ko-KR')
             };
 
-            classData.pairings = classData.pairings || [];
             classData.pairings.push(newPairing);
 
-            saveClassData();
+            await postToGoogleSheets({
+              action: 'addPairing',
+              pairing: newPairing
+            });
 
-            setTimeout(() => {
+            setTimeout(async () => {
               slotDisplay.classList.add('hidden');
               studentSelect.disabled = false;
+              isDrawing = false;
               renderApp();
-            }, 2500);
+              await fetchFromGoogleSheets(true);
+            }, 2200);
           }
         }, 80);
       });
