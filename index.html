@@ -37,7 +37,7 @@
 </head>
 <body class="bg-gradient-to-br from-amber-50 via-rose-50 to-sky-50 min-h-screen text-slate-800 pb-12">
 
-  <!-- Custom Toast Notification -->
+  <!-- Custom Toast Notification (No alert/confirm) -->
   <div id="toast-box" class="fixed top-4 left-1/2 -translate-x-1/2 z-50 hidden max-w-sm w-11/12 bg-slate-900 text-white px-4 py-3 rounded-2xl shadow-2xl text-xs font-bold text-center transition-all"></div>
 
   <!-- Custom Confirm Modal -->
@@ -123,30 +123,37 @@
         </span>
       </div>
 
-      <!-- Two-Column Side-by-Side Gender View -->
+      <!-- Two-Column Side-by-Side Gender View (No internal scrollbars) -->
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <!-- Girls Pairs Column -->
-        <div class="bg-rose-50/50 rounded-2xl p-3 border border-rose-100">
+        <div class="bg-rose-50/50 rounded-2xl p-3.5 border border-rose-100">
           <h3 class="text-xs font-bold text-rose-700 mb-2.5 flex items-center justify-between border-b border-rose-200 pb-1.5">
             <span><i class="fa-solid fa-venus mr-1"></i> 여학생 단짝</span>
             <span id="girls-count-tag" class="text-[10px] bg-rose-200 text-rose-800 px-2 py-0.5 rounded-md font-semibold">0팀</span>
           </h3>
-          <div id="girls-board-list" class="space-y-2 max-h-80 overflow-y-auto pr-1"></div>
+          <div id="girls-board-list" class="space-y-2"></div>
         </div>
 
         <!-- Boys Pairs Column -->
-        <div class="bg-sky-50/50 rounded-2xl p-3 border border-sky-100">
+        <div class="bg-sky-50/50 rounded-2xl p-3.5 border border-sky-100">
           <h3 class="text-xs font-bold text-sky-700 mb-2.5 flex items-center justify-between border-b border-sky-200 pb-1.5">
             <span><i class="fa-solid fa-mars mr-1"></i> 남학생 단짝</span>
             <span id="boys-count-tag" class="text-[10px] bg-sky-200 text-sky-800 px-2 py-0.5 rounded-md font-semibold">0팀</span>
           </h3>
-          <div id="boys-board-list" class="space-y-2 max-h-80 overflow-y-auto pr-1"></div>
+          <div id="boys-board-list" class="space-y-2"></div>
         </div>
       </div>
     </section>
 
-    <!-- SECTION 2: Draw Action Area -->
-    <section class="bg-white/90 backdrop-blur rounded-3xl p-6 shadow-xl border border-white">
+    <!-- All Matched Celebration Banner (Shown when 100% matched) -->
+    <section id="all-matched-banner" class="hidden bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-3xl p-5 shadow-xl text-center">
+      <div class="text-2xl mb-1">🎉 짝짝짝! 매칭 완료 🎉</div>
+      <p class="font-jua text-lg">우리 반 모든 친구들의 단짝이 정해졌습니다!</p>
+      <p class="text-xs text-emerald-100 mt-1">위 게시판에서 나의 단짝 친구를 확인해 보세요.</p>
+    </section>
+
+    <!-- SECTION 2: Draw Action Area (Automatically hidden when all students are matched) -->
+    <section id="draw-section" class="bg-white/90 backdrop-blur rounded-3xl p-6 shadow-xl border border-white">
       <h2 class="text-lg font-bold font-jua text-slate-800 mb-3 flex items-center gap-2">
         <i class="fa-solid fa-dice text-amber-500"></i> 단짝 뽑기 진행하기
       </h2>
@@ -187,6 +194,7 @@
   <script>
     // =========================================================================
     // [선생님 설정란] 아래 큰따옴표("") 안에 구글 Apps Script 웹 앱 URL을 넣어주세요!
+    // 예시: const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycb.../exec";
     // =========================================================================
     const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyWGXY3fEJVnoDkFxfzrjMpXNxuz7LAl8fFiYluEb9GQT-AOEL4OpOqP2Ke4bpAW-RJ/exec";
 
@@ -228,6 +236,7 @@
       }
     }
 
+    // Fetch latest roster and pairings from Google Sheets
     async function fetchFromGoogleSheets(silent = false) {
       if (!GOOGLE_SCRIPT_URL || !GOOGLE_SCRIPT_URL.startsWith("http")) {
         updateSyncUI("구글 시트 URL이 아직 연결되지 않았습니다", "error");
@@ -239,6 +248,7 @@
       if (!silent) updateSyncUI("구글 시트에서 최신 명단 동기화 중...", "loading");
 
       try {
+        // Add timestamp query param to bypass browser caching
         const res = await fetch(`${GOOGLE_SCRIPT_URL}?t=${Date.now()}`);
         const data = await res.json();
 
@@ -261,12 +271,13 @@
       }
     }
 
+    // Send new pairing or reset command to Google Sheets
     async function postToGoogleSheets(payload) {
       if (!GOOGLE_SCRIPT_URL || !GOOGLE_SCRIPT_URL.startsWith("http")) return false;
       try {
         await fetch(GOOGLE_SCRIPT_URL, {
           method: 'POST',
-          mode: 'no-cors',
+          mode: 'no-cors', // Required for Google Apps Script web app POST requests
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
           body: JSON.stringify(payload)
         });
@@ -320,6 +331,22 @@
       });
     }
 
+    // Check if all present (non-absent) students have been matched
+    function areAllActiveStudentsMatched() {
+      const activeGirls = (classData.girls || []).filter(g => !(classData.absentees || []).includes(g));
+      const activeBoys = (classData.boys || []).filter(b => !(classData.absentees || []).includes(b));
+      const totalActive = [...activeGirls, ...activeBoys];
+
+      if (totalActive.length === 0) return false;
+
+      // Count how many students remain unmatched in each gender
+      const unmatchedGirls = activeGirls.filter(g => !isStudentMatched(g));
+      const unmatchedBoys = activeBoys.filter(b => !isStudentMatched(b));
+
+      // Consider complete if 0 unmatched remain (or 1 solo student left who cannot form a pair)
+      return unmatchedGirls.length <= 1 && unmatchedBoys.length <= 1;
+    }
+
     function renderApp() {
       const studentSelect = document.getElementById('student-select');
       const girlsBoardList = document.getElementById('girls-board-list');
@@ -329,8 +356,20 @@
       const boysCountTag = document.getElementById('boys-count-tag');
       const studentStatusBox = document.getElementById('student-status-box');
       const drawBtn = document.getElementById('draw-btn');
+      const drawSection = document.getElementById('draw-section');
+      const allMatchedBanner = document.getElementById('all-matched-banner');
 
       if (!studentSelect) return;
+
+      // Toggle Draw Section vs All Matched Celebration Banner
+      const isComplete = areAllActiveStudentsMatched();
+      if (isComplete && !isDrawing) {
+        drawSection.classList.add('hidden');
+        allMatchedBanner.classList.remove('hidden');
+      } else {
+        drawSection.classList.remove('hidden');
+        allMatchedBanner.classList.add('hidden');
+      }
 
       const selectedValue = studentSelect.value;
 
@@ -450,6 +489,7 @@
     }
 
     window.addEventListener('DOMContentLoaded', () => {
+      // Initial fetch & start 4-second real-time polling
       fetchFromGoogleSheets(false);
       setInterval(() => fetchFromGoogleSheets(true), 4000);
 
@@ -512,6 +552,7 @@
           return;
         }
 
+        // Fetch freshest data right before drawing to avoid duplicate matches across students
         isDrawing = true;
         drawBtn.disabled = true;
         updateSyncUI("최신 매칭 현황 확인 중...", "loading");
@@ -573,14 +614,51 @@
           if (spinCount >= maxSpins) {
             clearInterval(spinInterval);
 
+            // Re-verify latest sheet state right at the moment of locking in the match
+            // to prevent race conditions if another student finished drawing during the spin!
+            try {
+              const verifyRes = await fetch(`${GOOGLE_SCRIPT_URL}?t=${Date.now()}`);
+              const verifyData = await verifyRes.json();
+              classData.pairings = verifyData.pairings || classData.pairings;
+              classData.absentees = verifyData.absentees || classData.absentees;
+            } catch (e) {}
+
+            // Abort if picker was already matched by someone else during animation
+            if (isStudentMatched(pickerName)) {
+              slotDisplay.classList.add('hidden');
+              studentSelect.disabled = false;
+              isDrawing = false;
+              renderApp();
+              showToast("방금 다른 친구가 먼저 단짝으로 뽑았습니다! 게시판을 확인하세요.");
+              return;
+            }
+
+            // Re-filter available candidates based on the verified pairings
+            const freshCandidates = sameGenderGroup.filter(name => {
+              if (name === pickerName) return false;
+              if ((classData.absentees || []).includes(name)) return false;
+              if (isStudentMatched(name)) return false;
+              return true;
+            });
+
+            if (freshCandidates.length === 0) {
+              slotDisplay.classList.add('hidden');
+              studentSelect.disabled = false;
+              isDrawing = false;
+              renderApp();
+              showToast("남은 매칭 가능 친구가 없습니다.", true);
+              return;
+            }
+
+            const freshThreeGroup = freshCandidates.length === 2;
             let finalDisplayBuddy;
             let matchedMembers = [];
 
-            if (isThreeGroup) {
-              finalDisplayBuddy = candidates.join(' & ');
-              matchedMembers = [pickerName, ...candidates];
+            if (freshThreeGroup) {
+              finalDisplayBuddy = freshCandidates.join(' & ');
+              matchedMembers = [pickerName, ...freshCandidates];
             } else {
-              finalDisplayBuddy = candidates[Math.floor(Math.random() * candidates.length)];
+              finalDisplayBuddy = freshCandidates[Math.floor(Math.random() * freshCandidates.length)];
               matchedMembers = [pickerName, finalDisplayBuddy];
             }
 
@@ -597,8 +675,10 @@
               timestamp: new Date().toLocaleTimeString('ko-KR')
             };
 
+            // Optimistically update UI immediately
             classData.pairings.push(newPairing);
 
+            // Save to Google Sheets so all other students see it immediately
             await postToGoogleSheets({
               action: 'addPairing',
               pairing: newPairing
